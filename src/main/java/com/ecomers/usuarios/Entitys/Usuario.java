@@ -4,16 +4,21 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import lombok.Getter;
 import lombok.Setter;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 
 @Entity
 @Table(name = "usuario")
 @Getter @Setter
-public class Usuario {
+public class Usuario implements UserDetails {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -39,11 +44,35 @@ public class Usuario {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
-    // 1:1 Perfil
     @OneToOne(mappedBy = "usuario", cascade = CascadeType.ALL, orphanRemoval = true)
     private Perfil perfil;
 
-    // 1:N hacia UsuarioRol
     @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<UsuarioRol> roles = new HashSet<>();
+
+    // ✅ Métodos UserDetails
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return roles.stream()
+                .map(ur -> new SimpleGrantedAuthority(ur.getRol().getNombre()))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public String getPassword() { return this.passwordHash; }
+
+    @Override
+    public String getUsername() { return this.email; }
+
+    @Override
+    public boolean isAccountNonExpired() { return true; }
+
+    @Override
+    public boolean isAccountNonLocked() { return true; }
+
+    @Override
+    public boolean isCredentialsNonExpired() { return true; }
+
+    @Override
+    public boolean isEnabled() { return this.isActive; }
 }

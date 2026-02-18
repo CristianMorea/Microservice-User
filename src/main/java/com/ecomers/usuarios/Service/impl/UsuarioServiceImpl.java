@@ -11,6 +11,7 @@ import com.ecomers.usuarios.Repository.PerfilRepository;
 import com.ecomers.usuarios.Repository.RolRepository;
 import com.ecomers.usuarios.Repository.UsuarioRepository;
 import com.ecomers.usuarios.Repository.UsuarioRolRepository;
+import com.ecomers.usuarios.Service.JwtService;
 import com.ecomers.usuarios.Service.UsuarioService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -29,7 +30,7 @@ public class UsuarioServiceImpl implements UsuarioService {
     private final RolRepository rolRepository;
     private final UsuarioRolRepository usuarioRolRepository;
     private final PasswordEncoder passwordEncoder;
-
+    private final JwtService jwtService;
 
     @Override
     @Transactional
@@ -82,18 +83,18 @@ public class UsuarioServiceImpl implements UsuarioService {
     @Override
     public LoginResponseDTO login(LoginRequestDTO dto) {
 
-        //1. Buscar usuario activo
+        // 1. Buscar usuario activo
         Usuario usuario = usuarioRepository
                 .findActiveUserWithRoles(dto.getEmail())
                 .orElseThrow(() -> new RuntimeException("Credenciales inválidas"));
 
         // 2. Validar contraseña
-        if(!passwordEncoder.matches(dto.getPassword(), usuario.getPasswordHash())){
+        if (!passwordEncoder.matches(dto.getPassword(), usuario.getPasswordHash())) {
             throw new RuntimeException("Credenciales inválidas");
         }
 
         // 3. Obtener nombre desde perfil
-        String nombre = usuario.getPerfil() !=null
+        String nombre = usuario.getPerfil() != null
                 ? usuario.getPerfil().getNombre()
                 : "";
 
@@ -103,13 +104,16 @@ public class UsuarioServiceImpl implements UsuarioService {
                 .map(ur -> ur.getRol().getNombre())
                 .orElse("SIN ROL");
 
-        // 5. Construir respuesta
+        // 5. ✅ Generar token JWT aquí
+
+        String token = jwtService.generateToken(usuario);
 
         return LoginResponseDTO.builder()
                 .usuarioId(usuario.getUsuarioId())
                 .email(usuario.getEmail())
                 .nombre(nombre)
                 .rol(rol)
+                .token(token) // ✅ Token incluido en la respuesta
                 .build();
     }
 
