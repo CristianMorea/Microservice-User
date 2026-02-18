@@ -1,5 +1,7 @@
 package com.ecomers.usuarios.Service.impl;
 
+import com.ecomers.usuarios.Dto.LoginRequestDTO;
+import com.ecomers.usuarios.Dto.LoginResponseDTO;
 import com.ecomers.usuarios.Dto.UsuarioRegisterDTO;
 import com.ecomers.usuarios.Entitys.Perfil;
 import com.ecomers.usuarios.Entitys.Rol;
@@ -76,4 +78,39 @@ public class UsuarioServiceImpl implements UsuarioService {
         return UsuarioGuardado;
 
     }
+
+    @Override
+    public LoginResponseDTO login(LoginRequestDTO dto) {
+
+        //1. Buscar usuario activo
+        Usuario usuario = usuarioRepository
+                .findActiveUserWithRoles(dto.getEmail())
+                .orElseThrow(() -> new RuntimeException("Credenciales inválidas"));
+
+        // 2. Validar contraseña
+        if(!passwordEncoder.matches(dto.getPassword(), usuario.getPasswordHash())){
+            throw new RuntimeException("Credenciales inválidas");
+        }
+
+        // 3. Obtener nombre desde perfil
+        String nombre = usuario.getPerfil() !=null
+                ? usuario.getPerfil().getNombre()
+                : "";
+
+        // 4. Obtener rol principal
+        String rol = usuario.getRoles().stream()
+                .findFirst()
+                .map(ur -> ur.getRol().getNombre())
+                .orElse("SIN ROL");
+
+        // 5. Construir respuesta
+
+        return LoginResponseDTO.builder()
+                .usuarioId(usuario.getUsuarioId())
+                .email(usuario.getEmail())
+                .nombre(nombre)
+                .rol(rol)
+                .build();
+    }
+
 }

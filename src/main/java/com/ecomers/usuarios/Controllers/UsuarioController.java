@@ -1,8 +1,7 @@
 package com.ecomers.usuarios.Controllers;
-
-
+import com.ecomers.usuarios.Dto.LoginRequestDTO;
+import com.ecomers.usuarios.Dto.LoginResponseDTO;
 import com.ecomers.usuarios.Dto.UsuarioRegisterDTO;
-import com.ecomers.usuarios.Entitys.Usuario;
 import com.ecomers.usuarios.Service.UsuarioService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +22,13 @@ public class UsuarioController {
     public ResponseEntity<?> register(@RequestBody UsuarioRegisterDTO dto){
         usuarioService.registrarUsuario(dto);
         return ResponseEntity.ok("Usuario registrado correctamente");
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<LoginResponseDTO> login(@RequestBody LoginRequestDTO dto){
+
+        LoginResponseDTO response = usuarioService.login(dto);
+        return ResponseEntity.ok(response);
     }
 
 }
