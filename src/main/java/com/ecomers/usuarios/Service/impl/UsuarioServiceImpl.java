@@ -15,7 +15,6 @@ import com.ecomers.usuarios.Service.JwtService;
 import com.ecomers.usuarios.Service.UsuarioService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -49,8 +48,7 @@ public class UsuarioServiceImpl implements UsuarioService {
         usuario.setCreatedAt(LocalDateTime.now());
         usuario.setActive(true);
 
-        Usuario UsuarioGuardado = usuarioRepository.save(usuario);
-
+        Usuario UsuarioGuardado = usuarioRepository.saveAndFlush(usuario);
         // 3.  CREAR PERFIL
 
         Perfil perfil = new Perfil();
@@ -61,7 +59,7 @@ public class UsuarioServiceImpl implements UsuarioService {
         perfil.setAvatarUrl(dto.getAvatarUrl());
         perfil.setUpdated_at(LocalDateTime.now());
 
-        perfilRepository.save(perfil);
+        perfilRepository.saveAndFlush(perfil);
 
         // 4 ASIGNAR ROL CLIENTE
 

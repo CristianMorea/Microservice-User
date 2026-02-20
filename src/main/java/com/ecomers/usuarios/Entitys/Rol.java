@@ -11,14 +11,15 @@ import java.util.HashSet;
 import java.util.Set;
 
 @Entity
-@Table(name = "rol")
+@Table(name = "Rol")
 @Getter
 @Setter
 public class Rol {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id_rol;
+    @Column(name = "id")
+    private Integer id;
 
     @Column(nullable = false, unique = true)
     private String nombre;
