@@ -16,11 +16,9 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-
 @Configuration
 @EnableMethodSecurity
 @RequiredArgsConstructor
-
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
@@ -34,21 +32,32 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
 
                 .authorizeHttpRequests(auth -> auth
+                        // Públicas
                         .requestMatchers(
                                 "/usuarios/register",
                                 "/usuarios/login",
                                 "/oauth2/**",
-                                "/login/oauth2/**"   // ✅ ruta interna de Spring OAuth2
+                                "/login/oauth2/**"
                         ).permitAll()
+
+                        // Por rol
+                        .requestMatchers("/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/vendedor/**").hasAnyRole("ADMIN", "VENDEDOR")
+                        .requestMatchers("/cliente/**").hasAnyRole("ADMIN", "CLIENTE")
+
                         .anyRequest().authenticated()
                 )
 
-                // ✅ Evita que Spring redirija al login de Google cuando no está autenticado
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((request, response, authException) -> {
                             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                             response.setContentType("application/json");
                             response.getWriter().write("{\"error\": \"No autorizado\"}");
+                        })
+                        .accessDeniedHandler((request, response, accessDeniedException) -> {
+                            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                            response.setContentType("application/json");
+                            response.getWriter().write("{\"error\": \"Acceso denegado — no tienes permisos\"}");
                         })
                 )
 
@@ -62,7 +71,6 @@ public class SecurityConfig {
                         })
                 )
 
-                // ✅ STATELESS para JWT — OAuth2 maneja su propia sesión internamente
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 );
