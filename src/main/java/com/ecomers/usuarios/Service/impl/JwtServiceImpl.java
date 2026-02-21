@@ -9,10 +9,14 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
@@ -64,11 +68,31 @@ public class JwtServiceImpl implements JwtService {
 
     @Override
     public String obtenerEmailDesdeToken(String token) {
-        Claims claims = Jwts.parser()
-                .verifyWith(getSigningKey())                    // ✅ setSigningKey() → verifyWith()
+        return parsearClaims(token).getSubject();
+    }
+
+    private Claims parsearClaims(String token) {
+        return Jwts.parser()
+                .verifyWith(getSigningKey())
                 .build()
-                .parseSignedClaims(token)                      // ✅ parseClaimsJws() → parseSignedClaims()
-                .getPayload();                                 // ✅ getBody() → getPayload()
-        return claims.getSubject();
+                .parseSignedClaims(token)
+                .getPayload();
+    }
+
+    @Override
+    public List<GrantedAuthority> obtenerAuthoritiesDesdeToken(String token) {
+        String roles = parsearClaims(token).get("roles", String.class);
+
+        if (roles == null || roles.isBlank()) return List.of();
+
+        return Arrays.stream(roles.split(","))
+                .map(String::trim)
+                .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public Integer obtenerUsuarioIdDesdeToken(String token) {
+        return parsearClaims(token).get("usuarioId", Integer.class); // ✅ Integer directo
     }
 }

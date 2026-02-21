@@ -1,9 +1,9 @@
 package com.ecomers.usuarios.Config;
 
 import com.ecomers.usuarios.Service.JwtService;
-import com.ecomers.usuarios.Service.impl.UsuarioDetailsServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
@@ -21,9 +21,7 @@ import java.util.List;
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
-    private final UsuarioDetailsServiceImpl usuarioDetailsService;
 
-    // Rutas públicas que el filtro debe ignorar
     private static final List<String> PUBLIC_URLS = List.of(
             "/usuarios/login",
             "/usuarios/register",
@@ -34,7 +32,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getServletPath();
-        return PUBLIC_URLS.stream().anyMatch(path::startsWith); // ✅ salta el filtro para rutas públicas
+        return PUBLIC_URLS.stream().anyMatch(path::startsWith);
     }
 
     @Override
@@ -43,22 +41,33 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         final String authHeader = request.getHeader("Authorization");
 
-        String email = null;
-        String token = null;
-
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            token = authHeader.substring(7);
-            email = jwtService.obtenerEmailDesdeToken(token);
+        // ✅ Si no hay token, continúa sin autenticar (Spring Security rechazará si la ruta lo requiere)
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            chain.doFilter(request, response);
+            return; // 👈 return temprano, evita el else anidado
         }
 
-        if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            var userDetails = usuarioDetailsService.loadUserByUsername(email);
-            if (jwtService.validateToken(token)) {
-                UsernamePasswordAuthenticationToken authToken =
-                        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authToken);
-            }
+        String token = authHeader.substring(7);
+
+        // ✅ Valida primero antes de intentar parsear
+        if (!jwtService.validateToken(token)) {
+            chain.doFilter(request, response);
+            return;
+        }
+
+        // ✅ Solo se ejecuta si aún no hay autenticación en el contexto
+        if (SecurityContextHolder.getContext().getAuthentication() == null) {
+
+            String email = jwtService.obtenerEmailDesdeToken(token);
+            List<GrantedAuthority> authorities = jwtService.obtenerAuthoritiesDesdeToken(token);
+            // 👆 Roles desde el token — sin tocar la BD
+
+            UsernamePasswordAuthenticationToken authToken =
+                    new UsernamePasswordAuthenticationToken(email, null, authorities);
+            // 👆 principal es el email (String), suficiente para la mayoría de casos
+
+            authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+            SecurityContextHolder.getContext().setAuthentication(authToken);
         }
 
         chain.doFilter(request, response);

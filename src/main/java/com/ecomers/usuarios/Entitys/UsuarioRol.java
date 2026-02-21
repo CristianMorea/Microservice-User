@@ -3,8 +3,6 @@ package com.ecomers.usuarios.Entitys;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.NotFound;
-import org.hibernate.annotations.NotFoundAction;
 
 import java.time.LocalDateTime;
 
@@ -29,7 +27,6 @@ public class UsuarioRol {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "assigned_by")
-    @NotFound(action = NotFoundAction.IGNORE)
     private Usuario assignedBy;
 
 
