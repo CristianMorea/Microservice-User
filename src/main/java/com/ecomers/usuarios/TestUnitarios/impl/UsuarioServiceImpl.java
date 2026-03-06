@@ -1,4 +1,4 @@
-package com.ecomers.usuarios.Service.impl;
+package com.ecomers.usuarios.TestUnitarios.impl;
 
 import com.ecomers.usuarios.Dto.*;
 import com.ecomers.usuarios.Entitys.Perfil;
@@ -9,8 +9,8 @@ import com.ecomers.usuarios.Repository.PerfilRepository;
 import com.ecomers.usuarios.Repository.RolRepository;
 import com.ecomers.usuarios.Repository.UsuarioRepository;
 import com.ecomers.usuarios.Repository.UsuarioRolRepository;
-import com.ecomers.usuarios.Service.JwtService;
-import com.ecomers.usuarios.Service.UsuarioService;
+import com.ecomers.usuarios.TestUnitarios.JwtService;
+import com.ecomers.usuarios.TestUnitarios.UsuarioService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-
+@Transactional
 public class UsuarioServiceImpl implements UsuarioService {
 
     private final UsuarioRepository usuarioRepository;
@@ -103,7 +103,7 @@ public class UsuarioServiceImpl implements UsuarioService {
                 .map(ur -> ur.getRol().getNombre())
                 .orElse("SIN ROL");
 
-        // 5. ✅ Generar token JWT aquí
+        // 5.  Generar token JWT aquí
 
         String token = jwtService.generateToken(usuario);
 
@@ -112,7 +112,7 @@ public class UsuarioServiceImpl implements UsuarioService {
                 .email(usuario.getEmail())
                 .nombre(nombre)
                 .rol(rol)
-                .token(token) // ✅ Token incluido en la respuesta
+                .token(token) //  Token incluido en la respuesta
                 .build();
     }
 
@@ -124,7 +124,7 @@ public class UsuarioServiceImpl implements UsuarioService {
 
         Perfil perfil = usuario.getPerfil();
 
-        // ✅ Builder en lugar de new PerfilResponseDTO(...)
+        //  Builder en lugar de new PerfilResponseDTO(...)
         return PerfilResponseDTO.builder()
                 .usuarioId(usuario.getUsuarioId())
                 .nombre(perfil != null ? perfil.getNombre() : "")
@@ -136,7 +136,7 @@ public class UsuarioServiceImpl implements UsuarioService {
                 .build();
     }
 
-    // ✅ Ver perfil propio
+    // Ver perfil propio
     @Override
     public PerfilResponseDTO obtenerPerfil(Integer usuarioId) {
         Usuario usuario = usuarioRepository.findById(usuarioId)
@@ -144,7 +144,7 @@ public class UsuarioServiceImpl implements UsuarioService {
         return toPerfilDTO(usuario);
     }
 
-    // ✅ Editar perfil propio
+    // Editar perfil propio
     @Override
     @Transactional
     public PerfilResponseDTO editarPerfil(Integer usuarioId, EditarPerfilDTO dto) {
@@ -162,11 +162,16 @@ public class UsuarioServiceImpl implements UsuarioService {
         perfil.setDireccion(dto.getDireccion());
         perfil.setUpdated_at(LocalDateTime.now());
 
-        perfilRepository.save(perfil);
-        return toPerfilDTO(usuario);
+        perfilRepository.saveAndFlush(perfil);
+
+        // Recarga el usuario desde BD para que el perfil actualizado
+        // esté reflejado — sin esto toPerfilDTO lee el objeto en memoria
+        // que aún tiene el perfil viejo (o null si era nuevo)
+        Usuario actualizado = usuarioRepository.findById(usuarioId).orElseThrow();
+        return toPerfilDTO(actualizado);
     }
 
-    // ✅ Cambiar contraseña
+    //  Cambiar contraseña
     @Override
     @Transactional
     public void cambiarPassword(Integer usuarioId, CambiarPasswordDTO dto) {
@@ -187,7 +192,7 @@ public class UsuarioServiceImpl implements UsuarioService {
         usuarioRepository.save(usuario);
     }
 
-    // ✅ Listar todos los usuarios (ADMIN)
+    //  Listar todos los usuarios (ADMIN)
     @Override
     public List<PerfilResponseDTO> obtenerTodos() {
         return usuarioRepository.findAll().stream()
@@ -196,7 +201,7 @@ public class UsuarioServiceImpl implements UsuarioService {
                 .collect(Collectors.toList());
     }
 
-    // ✅ Soft delete — no elimina de la BD, solo marca deletedAt
+    //  Soft delete — no elimina de la BD, solo marca deletedAt
     @Override
     @Transactional
     public void eliminar(Integer usuarioId) {

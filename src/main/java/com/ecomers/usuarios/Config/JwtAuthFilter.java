@@ -1,6 +1,6 @@
 package com.ecomers.usuarios.Config;
 
-import com.ecomers.usuarios.Service.JwtService;
+import com.ecomers.usuarios.TestUnitarios.JwtService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;

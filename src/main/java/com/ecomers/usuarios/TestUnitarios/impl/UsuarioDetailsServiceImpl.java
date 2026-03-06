@@ -1,14 +1,9 @@
-package com.ecomers.usuarios.Service.impl;
+package com.ecomers.usuarios.TestUnitarios.impl;
 
-import com.ecomers.usuarios.Dto.LoginResponseDTO;
-import com.ecomers.usuarios.Entitys.Usuario;
 import com.ecomers.usuarios.Repository.UsuarioRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.*;
 import org.springframework.stereotype.Service;
-
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor

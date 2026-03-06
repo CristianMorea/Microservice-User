@@ -1,7 +1,7 @@
 package com.ecomers.usuarios.Config;
 
 
-import com.ecomers.usuarios.Service.impl.UsuarioDetailsServiceImpl;
+import com.ecomers.usuarios.TestUnitarios.impl.UsuarioDetailsServiceImpl;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;

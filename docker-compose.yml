@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+
+  usuarios-db:
+    image: mysql:8.4
+    container_name: usuarios-db
+    environment:
+      MYSQL_DATABASE: usuariosDB
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    ports:
+      - "3310:3306"                    #  3310 para no chocar con mysql-usuarios
+    volumes:
+      - usuarios_db_data:/var/lib/mysql
+    networks:
+      - ecommerce-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  usuario-service:
+    build: .
+    container_name: usuario-service
+    ports:
+      - "8084:8084"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://usuarios-db:3306/usuariosDB?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root   #  root directamente
+      SPRING_DATASOURCE_PASSWORD: ${DB_ROOT_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: ${JWT_EXPIRATION}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+    depends_on:
+      usuarios-db:
+        condition: service_healthy
+    networks:
+      - ecommerce-network
+
+volumes:
+  usuarios_db_data:
+
+networks:
+  ecommerce-network:
+    driver: bridge
+    name: ecommerce-network
