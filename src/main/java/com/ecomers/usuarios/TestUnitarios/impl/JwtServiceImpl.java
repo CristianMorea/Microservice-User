@@ -1,8 +1,8 @@
-package com.ecomers.usuarios.Service.impl;
+package com.ecomers.usuarios.TestUnitarios.impl;
 
 import com.ecomers.usuarios.Config.JwtConfig;
 import com.ecomers.usuarios.Entitys.Usuario;
-import com.ecomers.usuarios.Service.JwtService;
+import com.ecomers.usuarios.TestUnitarios.JwtService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
@@ -25,7 +25,7 @@ public class JwtServiceImpl implements JwtService {
 
     private final JwtConfig jwtConfig;
 
-    // ✅ Convierte el secret string a SecretKey
+    //  Convierte el secret string a SecretKey
 
 
     private SecretKey getSigningKey() {
@@ -44,12 +44,12 @@ public class JwtServiceImpl implements JwtService {
         Date exp = new Date(now.getTime() + jwtConfig.getExpiration());
 
         return Jwts.builder()
-                .subject(usuario.getEmail())                    // ✅ setSubject() → subject()
+                .subject(usuario.getEmail())                    //  setSubject() → subject()
                 .claim("usuarioId", usuario.getUsuarioId())
                 .claim("roles", roles)
-                .issuedAt(now)                                  // ✅ setIssuedAt() → issuedAt()
-                .expiration(exp)                                // ✅ setExpiration() → expiration()
-                .signWith(getSigningKey())                      // ✅ ya no necesita el algoritmo explícito
+                .issuedAt(now)                                  //  setIssuedAt() → issuedAt()
+                .expiration(exp)                                //  setExpiration() → expiration()
+                .signWith(getSigningKey())                      //  ya no necesita el algoritmo explícito
                 .compact();
     }
 
@@ -57,9 +57,9 @@ public class JwtServiceImpl implements JwtService {
     public boolean validateToken(String token) {
         try {
             Jwts.parser()
-                    .verifyWith(getSigningKey())                // ✅ setSigningKey() → verifyWith()
+                    .verifyWith(getSigningKey())                // setSigningKey() → verifyWith()
                     .build()
-                    .parseSignedClaims(token);                 // ✅ parseClaimsJws() → parseSignedClaims()
+                    .parseSignedClaims(token);                 //  parseClaimsJws() → parseSignedClaims()
             return true;
         } catch (JwtException | IllegalArgumentException e) {
             return false;
@@ -93,6 +93,6 @@ public class JwtServiceImpl implements JwtService {
 
     @Override
     public Integer obtenerUsuarioIdDesdeToken(String token) {
-        return parsearClaims(token).get("usuarioId", Integer.class); // ✅ Integer directo
+        return parsearClaims(token).get("usuarioId", Integer.class); //  Integer directo
     }
 }

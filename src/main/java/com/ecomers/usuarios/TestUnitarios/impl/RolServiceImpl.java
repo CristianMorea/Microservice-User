@@ -1,4 +1,4 @@
-package com.ecomers.usuarios.Service.impl;
+package com.ecomers.usuarios.TestUnitarios.impl;
 
 import com.ecomers.usuarios.Entitys.Rol;
 import com.ecomers.usuarios.Entitys.Usuario;
@@ -6,7 +6,9 @@ import com.ecomers.usuarios.Entitys.UsuarioRol;
 import com.ecomers.usuarios.Repository.RolRepository;
 import com.ecomers.usuarios.Repository.UsuarioRepository;
 import com.ecomers.usuarios.Repository.UsuarioRolRepository;
-import com.ecomers.usuarios.Service.RolService;
+import com.ecomers.usuarios.TestUnitarios.RolService;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -17,14 +19,17 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 public class RolServiceImpl implements RolService {
 
-    private final UsuarioRepository usuarioRepository;      // 👈 faltaba este
+    private final UsuarioRepository usuarioRepository;
     private final RolRepository rolRepository;
     private final UsuarioRolRepository usuarioRolRepository;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @Override
     @Transactional
     public void asignar(Integer usuarioId, String rolNombre) {
-        Usuario usuario = usuarioRepository.findById(usuarioId)  // ✅
+        Usuario usuario = usuarioRepository.findById(usuarioId)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
         Rol rol = rolRepository.findByNombre(rolNombre)
@@ -40,12 +45,23 @@ public class RolServiceImpl implements RolService {
         usuarioRol.setAssignedBy(usuario);
         usuarioRol.setAssignedAt(LocalDateTime.now());
 
-        usuarioRolRepository.save(usuarioRol);
+        usuarioRolRepository.saveAndFlush(usuarioRol);
+
+        // ✅ Limpia caché para que la siguiente operación
+        // (quitar en el mismo test) vea el rol recién asignado
+        entityManager.flush();
+        entityManager.clear();
     }
 
     @Override
     @Transactional
     public void quitar(Integer usuarioId, String rolNombre) {
+
+        // ✅ Limpia caché antes de cargar — evita que Hibernate devuelva
+        // el Usuario con roles desactualizados desde la caché de primer nivel
+        entityManager.flush();
+        entityManager.clear();
+
         Usuario usuario = usuarioRepository.findById(usuarioId)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
@@ -53,7 +69,6 @@ public class RolServiceImpl implements RolService {
             throw new RuntimeException("No puedes quitar el único rol del usuario");
         }
 
-        // Elimina desde la colección del padre — orphanRemoval se encarga del DELETE
         boolean removido = usuario.getRoles().removeIf(
                 ur -> ur.getRol().getNombre().equals(rolNombre)
         );
@@ -62,6 +77,6 @@ public class RolServiceImpl implements RolService {
             throw new RuntimeException("El usuario no tiene el rol " + rolNombre);
         }
 
-        usuarioRepository.save(usuario); // JPA detecta el cambio y ejecuta el DELETE
+        usuarioRepository.save(usuario);
     }
 }

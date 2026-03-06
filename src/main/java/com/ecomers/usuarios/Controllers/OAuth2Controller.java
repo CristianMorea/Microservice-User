@@ -3,7 +3,7 @@ package com.ecomers.usuarios.Controllers;
 import com.ecomers.usuarios.Entitys.Usuario;
 
 import com.ecomers.usuarios.Repository.UsuarioRepository;
-import com.ecomers.usuarios.Service.JwtService;
+import com.ecomers.usuarios.TestUnitarios.JwtService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.GetMapping;

@@ -2,8 +2,9 @@ package com.ecomers.usuarios.Controllers;
 
 import com.ecomers.usuarios.Dto.AsignarRolDTO;
 import com.ecomers.usuarios.Dto.PerfilResponseDTO;
-import com.ecomers.usuarios.Service.RolService;
-import com.ecomers.usuarios.Service.UsuarioService;
+import com.ecomers.usuarios.TestUnitarios.RolService;
+import com.ecomers.usuarios.TestUnitarios.UsuarioService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -30,7 +31,7 @@ public class AdminUsuarioController  {
     //  Ver el perfil de cualquier usuario
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<PerfilResponseDTO> verUsuario(@PathVariable Integer id) {
+    public ResponseEntity<PerfilResponseDTO> verUsuario(@Valid @PathVariable Integer id) {
         return ResponseEntity.ok(usuarioService.obtenerPerfil(id));
     }
 
@@ -45,8 +46,8 @@ public class AdminUsuarioController  {
     //  Asignar rol
     @PostMapping("/{id}/roles")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> asignarRol(@PathVariable Integer id,
-                                        @RequestBody AsignarRolDTO dto) {
+    public ResponseEntity<?> asignarRol(@Valid @PathVariable Integer id,
+                                        @Valid@RequestBody AsignarRolDTO dto) {
         rolService.asignar(id, dto.getRolNombre()); // ✅
         return ResponseEntity.ok("Rol asignado correctamente");
     }
@@ -54,8 +55,8 @@ public class AdminUsuarioController  {
     //  Quitar rol
     @DeleteMapping("/{id}/roles/{rolNombre}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> quitarRol(@PathVariable Integer id,
-                                       @PathVariable String rolNombre) {
+    public ResponseEntity<?> quitarRol(@Valid @PathVariable Integer id,
+                                       @Valid@PathVariable String rolNombre) {
         rolService.quitar(id, rolNombre);
         return ResponseEntity.noContent().build();
     }

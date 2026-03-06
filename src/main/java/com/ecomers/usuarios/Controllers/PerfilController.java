@@ -3,9 +3,10 @@ package com.ecomers.usuarios.Controllers;
 import com.ecomers.usuarios.Dto.CambiarPasswordDTO;
 import com.ecomers.usuarios.Dto.EditarPerfilDTO;
 import com.ecomers.usuarios.Dto.PerfilResponseDTO;
-import com.ecomers.usuarios.Service.JwtService;
-import com.ecomers.usuarios.Service.UsuarioService;
+import com.ecomers.usuarios.TestUnitarios.JwtService;
+import com.ecomers.usuarios.TestUnitarios.UsuarioService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -33,7 +34,7 @@ public class PerfilController  {
     //Editar su propio perfil
     @PutMapping("/editar")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<PerfilResponseDTO> editarPerfil(@RequestBody EditarPerfilDTO dto,
+    public ResponseEntity<PerfilResponseDTO> editarPerfil(@Valid @RequestBody EditarPerfilDTO dto,
                                                           HttpServletRequest request) {
         Integer usuarioId = jwtService.obtenerUsuarioIdDesdeToken(extraerToken(request));
         return ResponseEntity.ok(usuarioService.editarPerfil(usuarioId, dto));
@@ -42,7 +43,7 @@ public class PerfilController  {
     //Cambiar contraseña
     @PutMapping("/cambiar-password")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<?> cambiarPassword(@RequestBody CambiarPasswordDTO dto,
+    public ResponseEntity<?> cambiarPassword(@Valid @RequestBody CambiarPasswordDTO dto,
                                              HttpServletRequest request) {
         Integer usuarioId = jwtService.obtenerUsuarioIdDesdeToken(extraerToken(request));
         usuarioService.cambiarPassword(usuarioId, dto);
