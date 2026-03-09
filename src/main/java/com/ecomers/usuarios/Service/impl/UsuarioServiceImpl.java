@@ -1,18 +1,24 @@
-package com.ecomers.usuarios.TestUnitarios.impl;
+package com.ecomers.usuarios.Service.impl;
+
+
 
 import com.ecomers.usuarios.Dto.*;
 import com.ecomers.usuarios.Entitys.Perfil;
 import com.ecomers.usuarios.Entitys.Rol;
 import com.ecomers.usuarios.Entitys.Usuario;
 import com.ecomers.usuarios.Entitys.UsuarioRol;
+import com.ecomers.usuarios.Exeption.BadRequestException;
+import com.ecomers.usuarios.Exeption.ConflictException;
+import com.ecomers.usuarios.Exeption.NotFoundException;
 import com.ecomers.usuarios.Repository.PerfilRepository;
 import com.ecomers.usuarios.Repository.RolRepository;
 import com.ecomers.usuarios.Repository.UsuarioRepository;
 import com.ecomers.usuarios.Repository.UsuarioRolRepository;
-import com.ecomers.usuarios.TestUnitarios.JwtService;
-import com.ecomers.usuarios.TestUnitarios.UsuarioService;
+import com.ecomers.usuarios.Service.JwtService;
+import com.ecomers.usuarios.Service.UsuarioService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -23,6 +29,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Transactional
+@Slf4j
 public class UsuarioServiceImpl implements UsuarioService {
 
     private final UsuarioRepository usuarioRepository;
@@ -35,13 +42,12 @@ public class UsuarioServiceImpl implements UsuarioService {
     @Override
     @Transactional
     public Usuario registrarUsuario(UsuarioRegisterDTO dto) {
+        log.info("Intentando registrar usuario: {}", dto.getEmail());
 
-        //1. Validar Email unico
-        if(usuarioRepository.existsByEmail(dto.getEmail())){
-            throw new RuntimeException("El email ya está registrado");
+        if (usuarioRepository.existsByEmail(dto.getEmail())) {
+            log.warn("Registro fallido — email duplicado: {}", dto.getEmail());
+            throw new ConflictException("El email ya está registrado");
         }
-
-        // 2. CREAR USUARIO
 
         Usuario usuario = new Usuario();
         usuario.setEmail(dto.getEmail());
@@ -49,73 +55,70 @@ public class UsuarioServiceImpl implements UsuarioService {
         usuario.setCreatedAt(LocalDateTime.now());
         usuario.setActive(true);
 
-        Usuario UsuarioGuardado = usuarioRepository.saveAndFlush(usuario);
-        // 3.  CREAR PERFIL
+        Usuario usuarioGuardado = usuarioRepository.saveAndFlush(usuario);
+        log.info("Usuario creado con ID: {}", usuarioGuardado.getUsuarioId());
 
         Perfil perfil = new Perfil();
-        perfil.setUsuario(UsuarioGuardado);
+        perfil.setUsuario(usuarioGuardado);
         perfil.setNombre(dto.getNombre());
         perfil.setDireccion(dto.getDireccion());
         perfil.setTelefono(dto.getTelefono());
         perfil.setAvatarUrl(dto.getAvatarUrl());
         perfil.setUpdated_at(LocalDateTime.now());
-
         perfilRepository.saveAndFlush(perfil);
-
-        // 4 ASIGNAR ROL CLIENTE
+        log.info("Perfil creado para usuario ID: {}", usuarioGuardado.getUsuarioId());
 
         Rol rolCliente = rolRepository.findByNombre("CLIENTE")
-                .orElseThrow(() -> new RuntimeException("Rol CLIENTE no existe"));
+                .orElseThrow(() -> {
+                    log.error("Rol CLIENTE no encontrado — verifica DataInitializer");
+                    return new NotFoundException("Rol CLIENTE no existe");
+                });
 
         UsuarioRol usuarioRol = new UsuarioRol();
-        usuarioRol.setUsuario(UsuarioGuardado);
+        usuarioRol.setUsuario(usuarioGuardado);
         usuarioRol.setRol(rolCliente);
-        usuarioRol.setAssignedBy(UsuarioGuardado);
+        usuarioRol.setAssignedBy(usuarioGuardado);
         usuarioRol.setAssignedAt(LocalDateTime.now());
-
         usuarioRolRepository.save(usuarioRol);
+        log.info("Rol CLIENTE asignado a usuario ID: {}", usuarioGuardado.getUsuarioId());
 
-        return UsuarioGuardado;
-
+        return usuarioGuardado;
     }
 
     @Override
+    @Transactional
     public LoginResponseDTO login(LoginRequestDTO dto) {
+        log.info("Intento de login: {}", dto.getEmail());
 
-        // 1. Buscar usuario activo
         Usuario usuario = usuarioRepository
                 .findActiveUserWithRoles(dto.getEmail())
-                .orElseThrow(() -> new RuntimeException("Credenciales inválidas"));
+                .orElseThrow(() -> {
+                    log.warn("Login fallido — usuario no encontrado: {}", dto.getEmail());
+                    return new BadRequestException("Credenciales inválidas");
+                });
 
-        // 2. Validar contraseña
         if (!passwordEncoder.matches(dto.getPassword(), usuario.getPasswordHash())) {
-            throw new RuntimeException("Credenciales inválidas");
+            log.warn("Login fallido — password incorrecta para: {}", dto.getEmail());
+            throw new BadRequestException("Credenciales inválidas");
         }
 
-        // 3. Obtener nombre desde perfil
-        String nombre = usuario.getPerfil() != null
-                ? usuario.getPerfil().getNombre()
-                : "";
-
-        // 4. Obtener rol principal
+        String nombre = usuario.getPerfil() != null ? usuario.getPerfil().getNombre() : "";
         String rol = usuario.getRoles().stream()
                 .findFirst()
                 .map(ur -> ur.getRol().getNombre())
                 .orElse("SIN ROL");
 
-        // 5.  Generar token JWT aquí
-
         String token = jwtService.generateToken(usuario);
+        log.info("Login exitoso para usuario ID: {}", usuario.getUsuarioId());
 
         return LoginResponseDTO.builder()
                 .usuarioId(usuario.getUsuarioId())
                 .email(usuario.getEmail())
                 .nombre(nombre)
                 .rol(rol)
-                .token(token) //  Token incluido en la respuesta
+                .token(token)
                 .build();
     }
-
 
     private PerfilResponseDTO toPerfilDTO(Usuario usuario) {
         List<String> roles = usuario.getRoles().stream()
@@ -124,7 +127,6 @@ public class UsuarioServiceImpl implements UsuarioService {
 
         Perfil perfil = usuario.getPerfil();
 
-        //  Builder en lugar de new PerfilResponseDTO(...)
         return PerfilResponseDTO.builder()
                 .usuarioId(usuario.getUsuarioId())
                 .nombre(perfil != null ? perfil.getNombre() : "")
@@ -136,20 +138,24 @@ public class UsuarioServiceImpl implements UsuarioService {
                 .build();
     }
 
-    // Ver perfil propio
     @Override
+    @Transactional
     public PerfilResponseDTO obtenerPerfil(Integer usuarioId) {
+        log.info("Obteniendo perfil de usuario ID: {}", usuarioId);
         Usuario usuario = usuarioRepository.findById(usuarioId)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+                .orElseThrow(() -> {
+                    log.warn("Usuario no encontrado ID: {}", usuarioId);
+                    return new NotFoundException("Usuario no encontrado");
+                });
         return toPerfilDTO(usuario);
     }
 
-    // Editar perfil propio
     @Override
     @Transactional
     public PerfilResponseDTO editarPerfil(Integer usuarioId, EditarPerfilDTO dto) {
+        log.info("Editando perfil de usuario ID: {}", usuarioId);
         Usuario usuario = usuarioRepository.findById(usuarioId)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+                .orElseThrow(() -> new NotFoundException("Usuario no encontrado"));
 
         Perfil perfil = usuario.getPerfil();
         if (perfil == null) {
@@ -161,56 +167,57 @@ public class UsuarioServiceImpl implements UsuarioService {
         perfil.setTelefono(dto.getTelefono());
         perfil.setDireccion(dto.getDireccion());
         perfil.setUpdated_at(LocalDateTime.now());
-
         perfilRepository.saveAndFlush(perfil);
 
-        // Recarga el usuario desde BD para que el perfil actualizado
-        // esté reflejado — sin esto toPerfilDTO lee el objeto en memoria
-        // que aún tiene el perfil viejo (o null si era nuevo)
         Usuario actualizado = usuarioRepository.findById(usuarioId).orElseThrow();
+        log.info("Perfil actualizado para usuario ID: {}", usuarioId);
         return toPerfilDTO(actualizado);
     }
 
-    //  Cambiar contraseña
     @Override
     @Transactional
     public void cambiarPassword(Integer usuarioId, CambiarPasswordDTO dto) {
+        log.info("Cambiando password de usuario ID: {}", usuarioId);
         Usuario usuario = usuarioRepository.findById(usuarioId)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+                .orElseThrow(() -> new NotFoundException("Usuario no encontrado"));
 
-        // Verifica que la contraseña actual sea correcta
         if (!passwordEncoder.matches(dto.getPasswordActual(), usuario.getPasswordHash())) {
-            throw new RuntimeException("La contraseña actual es incorrecta");
+            log.warn("Password actual incorrecta para usuario ID: {}", usuarioId);
+            throw new BadRequestException("La contraseña actual es incorrecta");
         }
 
-        // Verifica que la nueva coincida con la confirmación
         if (!dto.getPasswordNueva().equals(dto.getConfirmarPassword())) {
-            throw new RuntimeException("Las contraseñas nuevas no coinciden");
+            throw new BadRequestException("Las contraseñas nuevas no coinciden");
         }
 
         usuario.setPasswordHash(passwordEncoder.encode(dto.getPasswordNueva()));
         usuarioRepository.save(usuario);
+        log.info("Password actualizada para usuario ID: {}", usuarioId);
     }
 
-    //  Listar todos los usuarios (ADMIN)
     @Override
+    @Transactional
     public List<PerfilResponseDTO> obtenerTodos() {
+        log.info("Listando todos los usuarios activos");
         return usuarioRepository.findAll().stream()
-                .filter(u -> u.getDeletedAt() == null) // excluye eliminados
+                .filter(u -> u.getDeletedAt() == null)
                 .map(this::toPerfilDTO)
                 .collect(Collectors.toList());
     }
 
-    //  Soft delete — no elimina de la BD, solo marca deletedAt
     @Override
     @Transactional
     public void eliminar(Integer usuarioId) {
+        log.info("Eliminando usuario ID: {}", usuarioId);
         Usuario usuario = usuarioRepository.findById(usuarioId)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+                .orElseThrow(() -> {
+                    log.warn("Intento de eliminar usuario inexistente ID: {}", usuarioId);
+                    return new NotFoundException("Usuario no encontrado");
+                });
 
         usuario.setDeletedAt(LocalDateTime.now());
         usuario.setActive(false);
         usuarioRepository.save(usuario);
+        log.info("Usuario ID: {} eliminado (soft delete)", usuarioId);
     }
-
 }

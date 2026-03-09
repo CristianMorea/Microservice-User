@@ -5,7 +5,7 @@ import com.ecomers.usuarios.Entitys.Rol;
 import com.ecomers.usuarios.Entitys.Usuario;
 import com.ecomers.usuarios.Entitys.UsuarioRol;
 import com.ecomers.usuarios.Entitys.UsuarioRolId;
-import com.ecomers.usuarios.TestUnitarios.impl.JwtServiceImpl;
+import com.ecomers.usuarios.Service.impl.JwtServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

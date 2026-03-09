@@ -1,8 +1,8 @@
-package com.ecomers.usuarios.TestUnitarios.impl;
+package com.ecomers.usuarios.Service.impl;
 
 import com.ecomers.usuarios.Config.JwtConfig;
 import com.ecomers.usuarios.Entitys.Usuario;
-import com.ecomers.usuarios.TestUnitarios.JwtService;
+import com.ecomers.usuarios.Service.JwtService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;

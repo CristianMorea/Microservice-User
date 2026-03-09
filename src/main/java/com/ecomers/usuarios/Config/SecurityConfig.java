@@ -1,7 +1,7 @@
 package com.ecomers.usuarios.Config;
 
 
-import com.ecomers.usuarios.TestUnitarios.impl.UsuarioDetailsServiceImpl;
+import com.ecomers.usuarios.Service.impl.UsuarioDetailsServiceImpl;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -37,7 +37,12 @@ public class SecurityConfig {
                                 "/usuarios/register",
                                 "/usuarios/login",
                                 "/oauth2/**",
-                                "/login/oauth2/**"
+                                "/login/oauth2/**",
+                                "/v3/api-docs/**",      // ← JSON con la spec
+                                "/swagger-ui/**",       // ← UI de Swagger
+                                "/swagger-ui.html",      // ← página principal
+                                "/actuator/health",
+                                "/actuator/info"
                         ).permitAll()
 
                         // Por rol

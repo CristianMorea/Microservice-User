@@ -7,7 +7,7 @@ import com.ecomers.usuarios.Entitys.UsuarioRolId;
 import com.ecomers.usuarios.Repository.RolRepository;
 import com.ecomers.usuarios.Repository.UsuarioRepository;
 import com.ecomers.usuarios.Repository.UsuarioRolRepository;
-import com.ecomers.usuarios.TestUnitarios.impl.RolServiceImpl;
+import com.ecomers.usuarios.Service.impl.RolServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
