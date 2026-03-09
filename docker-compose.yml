@@ -25,6 +25,13 @@ services:
     container_name: usuario-service
     ports:
       - "8084:8084"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8084/usuario/actuator/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s  # ← tiempo que tiene para arrancar antes del primer check
+
     environment:
       SPRING_DATASOURCE_URL: jdbc:mysql://usuarios-db:3306/usuariosDB?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
       SPRING_DATASOURCE_USERNAME: root   #  root directamente

@@ -1,4 +1,4 @@
-package com.ecomers.usuarios.TestUnitarios.impl;
+package com.ecomers.usuarios.Service.impl;
 
 import com.ecomers.usuarios.Repository.UsuarioRepository;
 import lombok.RequiredArgsConstructor;

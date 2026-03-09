@@ -9,7 +9,7 @@ import com.ecomers.usuarios.Repository.PerfilRepository;
 import com.ecomers.usuarios.Repository.RolRepository;
 import com.ecomers.usuarios.Repository.UsuarioRepository;
 import com.ecomers.usuarios.Repository.UsuarioRolRepository;
-import com.ecomers.usuarios.TestUnitarios.JwtService;
+import com.ecomers.usuarios.Service.JwtService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.transaction.Transactional;

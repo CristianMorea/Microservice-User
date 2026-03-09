@@ -1,6 +1,6 @@
 package com.ecomers.usuarios.Util;
 
-import com.ecomers.usuarios.TestUnitarios.JwtService;
+import com.ecomers.usuarios.Service.JwtService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;

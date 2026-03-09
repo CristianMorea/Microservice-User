@@ -1,12 +1,9 @@
 package com.ecomers.usuarios.Exeption;
 
-
-
-import jakarta.validation.ConstraintViolationException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -17,50 +14,35 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
 
-    // ✅ Validación del DTO (@Valid) — captura errores ANTES de llegar al service
+    // 400 — Datos inválidos (@Valid)
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String, Object>> handleValidationErrors(MethodArgumentNotValidException ex) {
-        Map<String, String> campos = new HashMap<>();
+    public ResponseEntity<Map<String, Object>> handleValidationErrors(
+            MethodArgumentNotValidException ex) {
 
+        Map<String, String> errores = new HashMap<>();
         ex.getBindingResult().getAllErrors().forEach(error -> {
             String campo = ((FieldError) error).getField();
             String mensaje = error.getDefaultMessage();
-            campos.put(campo, mensaje);
+            errores.put(campo, mensaje);
         });
+
+        log.warn("Validación fallida: {}", errores);
 
         return ResponseEntity.badRequest().body(Map.of(
                 "status", 400,
                 "error", "Datos inválidos",
-                "campos", campos,
+                "campos", errores,
                 "timestamp", LocalDateTime.now().toString()
         ));
     }
 
-    // ✅ Validación de la entidad JPA — captura errores al hacer persist
-    @ExceptionHandler(ConstraintViolationException.class)
-    public ResponseEntity<Map<String, Object>> handleConstraintViolation(ConstraintViolationException ex) {
-        Map<String, String> campos = new HashMap<>();
-
-        ex.getConstraintViolations().forEach(violation -> {
-            String path = violation.getPropertyPath().toString();
-            // propertyPath viene como "metodo.campo", nos quedamos solo con el campo
-            String campo = path.contains(".") ? path.substring(path.lastIndexOf('.') + 1) : path;
-            campos.put(campo, violation.getMessage());
-        });
-
-        return ResponseEntity.badRequest().body(Map.of(
-                "status", 400,
-                "error", "Datos inválidos",
-                "campos", campos,
-                "timestamp", LocalDateTime.now().toString()
-        ));
-    }
-
-    // Errores de negocio — 400
-    @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<Map<String, Object>> handleRuntimeException(RuntimeException ex) {
+    // 400 — Lógica de negocio inválida
+    @ExceptionHandler(BadRequestException.class)
+    public ResponseEntity<Map<String, Object>> handleBadRequest(BadRequestException ex) {
+        log.warn("Bad request: {}", ex.getMessage());
         return ResponseEntity.badRequest().body(Map.of(
                 "status", 400,
                 "error", ex.getMessage(),
@@ -68,19 +50,43 @@ public class GlobalExceptionHandler {
         ));
     }
 
-    // No autenticado — 401
-    @ExceptionHandler(AuthenticationException.class)
-    public ResponseEntity<Map<String, Object>> handleAuthException(AuthenticationException ex) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(
-                "status", 401,
-                "error", "No autenticado",
+    // 404 — Recurso no encontrado
+    @ExceptionHandler(NotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleNotFound(NotFoundException ex) {
+        log.warn("Recurso no encontrado: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                "status", 404,
+                "error", ex.getMessage(),
                 "timestamp", LocalDateTime.now().toString()
         ));
     }
 
-    // Sin permisos — 403
+    // 409 — Conflicto (duplicado)
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<Map<String, Object>> handleConflict(ConflictException ex) {
+        log.warn("Conflicto: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                "status", 409,
+                "error", ex.getMessage(),
+                "timestamp", LocalDateTime.now().toString()
+        ));
+    }
+
+    // 403 — Sin permisos
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<Map<String, Object>> handleForbidden(ForbiddenException ex) {
+        log.warn("Acceso denegado: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                "status", 403,
+                "error", ex.getMessage(),
+                "timestamp", LocalDateTime.now().toString()
+        ));
+    }
+
+    // 403 — Spring Security AccessDenied
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<Map<String, Object>> handleAccessDenied(AccessDeniedException ex) {
+        log.warn("Acceso denegado por Spring Security");
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
                 "status", 403,
                 "error", "No tienes permisos para realizar esta acción",
@@ -88,13 +94,13 @@ public class GlobalExceptionHandler {
         ));
     }
 
-    // Cualquier otro error inesperado — 500
+    // 500 — Error inesperado
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGenericException(Exception ex) {
+        log.error("Error inesperado: {}", ex.getMessage(), ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
                 "status", 500,
                 "error", "Error interno del servidor",
-                "detalle", ex.getMessage(),
                 "timestamp", LocalDateTime.now().toString()
         ));
     }
