@@ -77,7 +77,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         perfil.setUpdated_at(LocalDateTime.now());
         perfilRepository.saveAndFlush(perfil);
 
-        // 3. Asignar rol CLIENTE ✅
+        // 3. Asignar rol CLIENTE
         Rol rolCliente = rolRepository.findByNombre("CLIENTE")
                 .orElseThrow(() -> new RuntimeException("Rol CLIENTE no existe"));
 
@@ -88,7 +88,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         usuarioRol.setAssignedAt(LocalDateTime.now());
         usuarioRolRepository.save(usuarioRol);
 
-        // 4. Recargar con roles para que el token los incluya ✅
+        // 4. Recargar con roles para que el token los incluya
         return usuarioRepository.findActiveUserWithRoles(email)
                 .orElseThrow(() -> new RuntimeException("Error al crear usuario OAuth2"));
     }

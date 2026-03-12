@@ -37,7 +37,7 @@ public class UsuarioController {
     public ResponseEntity<Map<String, Object>> register(@Valid @RequestBody UsuarioRegisterDTO dto) {
         Usuario guardado = usuarioService.registrarUsuario(dto);
 
-        // ✅ Retorna un JSON con email y nombre, SIN passwordHash
+        //  Retorna un JSON con email y nombre, SIN passwordHash
         return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
                 "email", guardado.getEmail(),
                 "nombre", dto.getNombre()   // viene del DTO porque Usuario no tiene nombre

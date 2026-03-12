@@ -41,30 +41,30 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         final String authHeader = request.getHeader("Authorization");
 
-        // ✅ Si no hay token, continúa sin autenticar (Spring Security rechazará si la ruta lo requiere)
+        //  Si no hay token, continúa sin autenticar (Spring Security rechazará si la ruta lo requiere)
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             chain.doFilter(request, response);
-            return; // 👈 return temprano, evita el else anidado
+            return; //  return temprano, evita el else anidado
         }
 
         String token = authHeader.substring(7);
 
-        // ✅ Valida primero antes de intentar parsear
+        //  Valida primero antes de intentar parsear
         if (!jwtService.validateToken(token)) {
             chain.doFilter(request, response);
             return;
         }
 
-        // ✅ Solo se ejecuta si aún no hay autenticación en el contexto
+        // Solo se ejecuta si aún no hay autenticación en el contexto
         if (SecurityContextHolder.getContext().getAuthentication() == null) {
 
             String email = jwtService.obtenerEmailDesdeToken(token);
             List<GrantedAuthority> authorities = jwtService.obtenerAuthoritiesDesdeToken(token);
-            // 👆 Roles desde el token — sin tocar la BD
+            //  Roles desde el token — sin tocar la BD
 
             UsernamePasswordAuthenticationToken authToken =
                     new UsernamePasswordAuthenticationToken(email, null, authorities);
-            // 👆 principal es el email (String), suficiente para la mayoría de casos
+            //  principal es el email (String), suficiente para la mayoría de casos
 
             authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
             SecurityContextHolder.getContext().setAuthentication(authToken);

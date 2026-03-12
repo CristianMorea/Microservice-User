@@ -7,7 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
+
 import java.util.Optional;
 
 
@@ -16,7 +16,7 @@ import java.util.Optional;
 public interface UsuarioRolRepository extends JpaRepository<UsuarioRol, UsuarioRolId> {
 
     boolean existsByUsuario_UsuarioIdAndRol_Nombre(Integer usuarioId, String rolNombre);
-
+    long countByUsuario_UsuarioId(Integer usuarioId);
     @Modifying(clearAutomatically = true)
     @Transactional
     void deleteByUsuario_UsuarioIdAndRol_Nombre(Integer usuarioId, String rolNombre);

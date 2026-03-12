@@ -1,6 +1,7 @@
 package com.ecomers.usuarios.Exeption;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -12,12 +13,13 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
 
-    // 400 — Datos inválidos (@Valid)
+    // 400 — Datos inválidos (@Valid en DTO)
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidationErrors(
             MethodArgumentNotValidException ex) {
@@ -35,6 +37,39 @@ public class GlobalExceptionHandler {
                 "status", 400,
                 "error", "Datos inválidos",
                 "campos", errores,
+                "timestamp", LocalDateTime.now().toString()
+        ));
+    }
+
+    // 400 — Validación de entidad JPA (@Email, @NotNull en Entity)
+    @ExceptionHandler(jakarta.validation.ConstraintViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleConstraintViolation(
+            jakarta.validation.ConstraintViolationException ex) {
+
+        String mensaje = ex.getConstraintViolations().stream()
+                .map(cv -> cv.getPropertyPath() + ": " + cv.getMessage())
+                .collect(Collectors.joining(", "));
+
+        log.warn("Validación de entidad fallida: {}", mensaje);
+
+        return ResponseEntity.badRequest().body(Map.of(
+                "status", 400,
+                "error", "Datos inválidos",
+                "detalle", mensaje,
+                "timestamp", LocalDateTime.now().toString()
+        ));
+    }
+
+    // 400 — Violación de integridad (NULL, UNIQUE, FK)
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleDataIntegrity(
+            DataIntegrityViolationException ex) {
+
+        log.warn("Violación de integridad: {}", ex.getMessage());
+
+        return ResponseEntity.badRequest().body(Map.of(
+                "status", 400,
+                "error", "Datos inválidos o incompletos",
                 "timestamp", LocalDateTime.now().toString()
         ));
     }
@@ -94,7 +129,7 @@ public class GlobalExceptionHandler {
         ));
     }
 
-    // 500 — Error inesperado
+    // 500 — Error inesperado (siempre al final)
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGenericException(Exception ex) {
         log.error("Error inesperado: {}", ex.getMessage(), ex);

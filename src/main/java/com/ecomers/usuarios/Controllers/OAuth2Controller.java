@@ -22,8 +22,7 @@ public class OAuth2Controller {
     public String oauth2Success(OAuth2User principal) {
 
         String email = principal.getAttribute("email");
-        String nombre = principal.getAttribute("name");
-
+       
         // Buscar o crear usuario
         Usuario usuario = usuarioRepository.findByEmail(email)
                 .orElseGet(() -> {

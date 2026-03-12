@@ -2,10 +2,12 @@ package com.ecomers.usuarios.Controllers;
 
 import com.ecomers.usuarios.Dto.AsignarRolDTO;
 import com.ecomers.usuarios.Dto.PerfilResponseDTO;
+import com.ecomers.usuarios.Dto.UsuarioPageResponseDTO;
 import com.ecomers.usuarios.Service.RolService;
 import com.ecomers.usuarios.Service.UsuarioService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -27,13 +29,19 @@ public class AdminUsuarioController  {
     private final RolService rolService;
 
     //  Listar todos los usuarios
-    @GetMapping("listar")
+    @GetMapping("/listar")
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Listar todos los usuarios")
-    @ApiResponse(responseCode = "200", description = "Lista de usuarios")
-    @ApiResponse(responseCode = "403", description = "No tienes rol ADMIN")
-    public ResponseEntity<List<PerfilResponseDTO>> listarUsuarios() {
-        return ResponseEntity.ok(usuarioService.obtenerTodos());
+    @Operation(summary = "Listar usuarios paginado")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Lista paginada de usuarios"),
+            @ApiResponse(responseCode = "403", description = "No tienes rol ADMIN")
+    })
+    public ResponseEntity<UsuarioPageResponseDTO> listarUsuarios(
+            @RequestParam(defaultValue = "0") int pagina,
+            @RequestParam(defaultValue = "10") int tamaño) {
+
+        if (tamaño > 100) tamaño = 100;
+        return ResponseEntity.ok(usuarioService.obtenerTodos(pagina, tamaño));
     }
 
     //  Ver el perfil de cualquier usuario
@@ -68,7 +76,7 @@ public class AdminUsuarioController  {
 
     public ResponseEntity<?> asignarRol(@Valid @PathVariable Integer id,
                                         @Valid@RequestBody AsignarRolDTO dto) {
-        rolService.asignar(id, dto.getRolNombre()); // ✅
+        rolService.asignar(id, dto.getRolNombre()); //
         return ResponseEntity.ok("Rol asignado correctamente");
     }
 

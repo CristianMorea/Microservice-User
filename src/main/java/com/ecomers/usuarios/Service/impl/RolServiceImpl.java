@@ -10,6 +10,8 @@ import com.ecomers.usuarios.Repository.RolRepository;
 import com.ecomers.usuarios.Repository.UsuarioRepository;
 import com.ecomers.usuarios.Repository.UsuarioRolRepository;
 import com.ecomers.usuarios.Service.RolService;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +27,9 @@ public class RolServiceImpl implements RolService {
     private final UsuarioRepository usuarioRepository;
     private final RolRepository rolRepository;
     private final UsuarioRolRepository usuarioRolRepository;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @Override
     @Transactional
@@ -53,6 +58,7 @@ public class RolServiceImpl implements RolService {
         usuarioRol.setRol(rol);
         usuarioRol.setAssignedBy(usuario);
         usuarioRol.setAssignedAt(LocalDateTime.now());
+
         usuarioRolRepository.save(usuarioRol);
 
         log.info("Rol {} asignado exitosamente a usuario ID: {}", rolNombre, usuarioId);
@@ -61,6 +67,7 @@ public class RolServiceImpl implements RolService {
     @Override
     @Transactional
     public void quitar(Integer usuarioId, String rolNombre) {
+
         log.info("Quitando rol {} de usuario ID: {}", rolNombre, usuarioId);
 
         Usuario usuario = usuarioRepository.findById(usuarioId)
@@ -69,20 +76,31 @@ public class RolServiceImpl implements RolService {
                     return new NotFoundException("Usuario no encontrado");
                 });
 
-        if (usuario.getRoles().size() == 1) {
-            log.warn("Intento de quitar único rol de usuario ID: {}", usuarioId);
-            throw new BadRequestException("No puedes quitar el único rol del usuario");
-        }
+        //  verificar si tiene el rol
+        boolean tieneRol = usuarioRolRepository
+                .existsByUsuario_UsuarioIdAndRol_Nombre(usuarioId, rolNombre);
 
-        boolean removido = usuario.getRoles().removeIf(
-                ur -> ur.getRol().getNombre().equals(rolNombre));
-
-        if (!removido) {
+        if (!tieneRol) {
             log.warn("Usuario ID: {} no tiene el rol {}", usuarioId, rolNombre);
             throw new NotFoundException("El usuario no tiene el rol " + rolNombre);
         }
 
+        //  verificar que no sea el único rol
+        long cantidadRoles = usuarioRolRepository.countByUsuario_UsuarioId(usuarioId);
+
+        if (cantidadRoles <= 1) {
+            log.warn("Intento de quitar único rol de usuario ID: {}", usuarioId);
+            throw new BadRequestException("No puedes quitar el único rol del usuario");
+        }
+
+        //  eliminar rol
+        usuario.getRoles().removeIf(
+                ur -> ur.getRol().getNombre().equals(rolNombre)
+        );
+
         usuarioRepository.save(usuario);
+
         log.info("Rol {} removido de usuario ID: {}", rolNombre, usuarioId);
     }
+
 }

@@ -43,16 +43,14 @@ class UsuarioControllerTest extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName(" register — 400 con email duplicado")
-    void register_emailDuplicado_retorna400() throws Exception {
-        // Primero creamos el usuario
+    @DisplayName("register — 409 con email duplicado")
+    void register_emailDuplicado_retorna409() throws Exception {
         crearUsuario("duplicado@test.com", "Pass123!", rolCliente);
 
-        // Intentamos registrar con el mismo email
         mockMvc.perform(post("/usuarios/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(buildRegisterDTO("duplicado@test.com"))))
-                .andExpect(status().isBadRequest())
+                .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error").value("El email ya está registrado"));
     }
 

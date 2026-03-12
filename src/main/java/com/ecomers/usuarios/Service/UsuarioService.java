@@ -17,7 +17,7 @@ public interface UsuarioService {
     PerfilResponseDTO obtenerPerfil(Integer usuarioId);
     PerfilResponseDTO editarPerfil(Integer usuarioId, EditarPerfilDTO dto);
     void cambiarPassword(Integer usuarioId, CambiarPasswordDTO dto);
-    List<PerfilResponseDTO> obtenerTodos();
+    UsuarioPageResponseDTO obtenerTodos(int pagina, int tamaño);
     void eliminar(Integer usuarioId);
 
 }
