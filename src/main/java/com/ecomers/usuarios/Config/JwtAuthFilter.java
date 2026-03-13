@@ -1,6 +1,10 @@
 package com.ecomers.usuarios.Config;
 
 import com.ecomers.usuarios.Service.JwtService;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
@@ -9,10 +13,6 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
 
@@ -36,37 +36,40 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     }
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
+    protected void doFilterInternal(HttpServletRequest request,
+                                    HttpServletResponse response,
+                                    FilterChain chain)
             throws ServletException, IOException {
 
         final String authHeader = request.getHeader("Authorization");
 
-        // ✅ Si no hay token, continúa sin autenticar (Spring Security rechazará si la ruta lo requiere)
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             chain.doFilter(request, response);
-            return; // 👈 return temprano, evita el else anidado
+            return;
         }
 
         String token = authHeader.substring(7);
 
-        // ✅ Valida primero antes de intentar parsear
+        //  validateToken usa cache — no repite criptografía si ya fue validado
         if (!jwtService.validateToken(token)) {
             chain.doFilter(request, response);
             return;
         }
 
-        // ✅ Solo se ejecuta si aún no hay autenticación en el contexto
         if (SecurityContextHolder.getContext().getAuthentication() == null) {
 
             String email = jwtService.obtenerEmailDesdeToken(token);
-            List<GrantedAuthority> authorities = jwtService.obtenerAuthoritiesDesdeToken(token);
-            // 👆 Roles desde el token — sin tocar la BD
+
+            //  Ya retorna List<GrantedAuthority> — no necesita conversión
+            List<GrantedAuthority> authorities =
+                    jwtService.obtenerAuthoritiesDesdeToken(token);
 
             UsernamePasswordAuthenticationToken authToken =
                     new UsernamePasswordAuthenticationToken(email, null, authorities);
-            // 👆 principal es el email (String), suficiente para la mayoría de casos
 
-            authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+            authToken.setDetails(
+                    new WebAuthenticationDetailsSource().buildDetails(request));
+
             SecurityContextHolder.getContext().setAuthentication(authToken);
         }
 

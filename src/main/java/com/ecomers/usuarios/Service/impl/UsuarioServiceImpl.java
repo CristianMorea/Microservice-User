@@ -19,6 +19,10 @@ import com.ecomers.usuarios.Service.UsuarioService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -142,7 +146,7 @@ public class UsuarioServiceImpl implements UsuarioService {
     @Transactional
     public PerfilResponseDTO obtenerPerfil(Integer usuarioId) {
         log.info("Obteniendo perfil de usuario ID: {}", usuarioId);
-        Usuario usuario = usuarioRepository.findById(usuarioId)
+        Usuario usuario = usuarioRepository.findByIdWithDetails(usuarioId)
                 .orElseThrow(() -> {
                     log.warn("Usuario no encontrado ID: {}", usuarioId);
                     return new NotFoundException("Usuario no encontrado");
@@ -154,7 +158,7 @@ public class UsuarioServiceImpl implements UsuarioService {
     @Transactional
     public PerfilResponseDTO editarPerfil(Integer usuarioId, EditarPerfilDTO dto) {
         log.info("Editando perfil de usuario ID: {}", usuarioId);
-        Usuario usuario = usuarioRepository.findById(usuarioId)
+        Usuario usuario = usuarioRepository.findByIdWithDetails(usuarioId)
                 .orElseThrow(() -> new NotFoundException("Usuario no encontrado"));
 
         Perfil perfil = usuario.getPerfil();
@@ -169,11 +173,13 @@ public class UsuarioServiceImpl implements UsuarioService {
         perfil.setUpdated_at(LocalDateTime.now());
         perfilRepository.saveAndFlush(perfil);
 
-        Usuario actualizado = usuarioRepository.findById(usuarioId).orElseThrow();
+        //  Ahora usamos findByIdWithDetails en vez de findById
+        // ya trae perfil y roles en una sola query — sin reload extra
+        Usuario actualizado = usuarioRepository.findByIdWithDetails(usuarioId)
+                .orElseThrow();
         log.info("Perfil actualizado para usuario ID: {}", usuarioId);
         return toPerfilDTO(actualizado);
     }
-
     @Override
     @Transactional
     public void cambiarPassword(Integer usuarioId, CambiarPasswordDTO dto) {
@@ -192,23 +198,50 @@ public class UsuarioServiceImpl implements UsuarioService {
 
         usuario.setPasswordHash(passwordEncoder.encode(dto.getPasswordNueva()));
         usuarioRepository.save(usuario);
+
+        //  Invalida el token actual del usuario en el cache
+        // El próximo request con ese token será rechazado
+        if (dto.getTokenActual() != null) {
+            jwtService.invalidateToken(dto.getTokenActual());
+        }
+
         log.info("Password actualizada para usuario ID: {}", usuarioId);
     }
 
-    @Override
+
+
     @Transactional
-    public List<PerfilResponseDTO> obtenerTodos() {
-        log.info("Listando todos los usuarios activos");
-        return usuarioRepository.findAll().stream()
-                .filter(u -> u.getDeletedAt() == null)
+    public UsuarioPageResponseDTO obtenerTodos(int pagina, int tamaño) {
+        log.info("Listando usuarios — página: {}, tamaño: {}", pagina, tamaño);
+
+        Pageable pageable = PageRequest.of(pagina, tamaño, Sort.by("createdAt").descending());
+
+        // ✅ Una sola query trae usuarios + roles + perfil
+        Page<Usuario> paginaUsuarios = usuarioRepository.findAllActivosWithDetails(pageable);
+
+        List<PerfilResponseDTO> dtos = paginaUsuarios.getContent().stream()
                 .map(this::toPerfilDTO)
                 .collect(Collectors.toList());
+
+        log.info("Retornando {} usuarios de {} totales",
+                dtos.size(), paginaUsuarios.getTotalElements());
+
+        return UsuarioPageResponseDTO.builder()
+                .usuarios(dtos)
+                .paginaActual(paginaUsuarios.getNumber())
+                .totalPaginas(paginaUsuarios.getTotalPages())
+                .totalUsuarios(paginaUsuarios.getTotalElements())
+                .tamañoPagina(paginaUsuarios.getSize())
+                .esUltimaPagina(paginaUsuarios.isLast())
+                .build();
     }
 
     @Override
     @Transactional
     public void eliminar(Integer usuarioId) {
         log.info("Eliminando usuario ID: {}", usuarioId);
+
+        // Solo necesitamos el usuario base — findById es suficiente
         Usuario usuario = usuarioRepository.findById(usuarioId)
                 .orElseThrow(() -> {
                     log.warn("Intento de eliminar usuario inexistente ID: {}", usuarioId);

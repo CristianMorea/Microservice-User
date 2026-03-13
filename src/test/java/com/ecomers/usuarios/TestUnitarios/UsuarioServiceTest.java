@@ -29,7 +29,10 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
-
+import com.ecomers.usuarios.Dto.UsuarioPageResponseDTO;
+import org.springframework.data.domain.*;
+import java.util.HashSet;
+import static org.mockito.ArgumentMatchers.any;
 @ExtendWith(MockitoExtension.class) // ← No levanta Spring, solo Mockito
 class UsuarioServiceTest {
 
@@ -254,7 +257,7 @@ class UsuarioServiceTest {
     @Test
     @DisplayName(" obtenerPerfil — retorna DTO del usuario")
     void obtenerPerfil_usuarioExiste_retornaDTO() {
-        when(usuarioRepository.findById(1)).thenReturn(Optional.of(usuarioMock));
+        when(usuarioRepository.findByIdWithDetails(1)).thenReturn(Optional.of(usuarioMock));
 
         PerfilResponseDTO result = usuarioService.obtenerPerfil(1);
 
@@ -265,7 +268,7 @@ class UsuarioServiceTest {
     @Test
     @DisplayName(" obtenerPerfil — lanza excepción si usuario no existe")
     void obtenerPerfil_usuarioNoExiste_lanzaExcepcion() {
-        when(usuarioRepository.findById(99)).thenReturn(Optional.empty());
+        when(usuarioRepository.findByIdWithDetails(99)).thenReturn(Optional.empty());
 
         assertThrows(RuntimeException.class,
                 () -> usuarioService.obtenerPerfil(99));
@@ -339,25 +342,31 @@ class UsuarioServiceTest {
     }
 
     @Test
-    @DisplayName(" obtenerTodos — excluye usuarios con deletedAt")
+    @DisplayName(" obtenerTodos — retorna página sin usuarios eliminados")
     void obtenerTodos_excluyeEliminados() {
+        // Arrange
         Usuario activo = new Usuario();
         activo.setEmail("activo@test.com");
         activo.setActive(true);
+        activo.setRoles(new HashSet<>());
+        activo.setPerfil(null);
 
-        Usuario eliminado = new Usuario();
-        eliminado.setEmail("eliminado@test.com");
-        eliminado.setDeletedAt(LocalDateTime.now());
+        Pageable pageable = PageRequest.of(0, 10, Sort.by("createdAt").descending());
+        Page<Usuario> paginaMock = new PageImpl<>(List.of(activo), pageable, 1);
 
-        when(usuarioRepository.findAll()).thenReturn(List.of(activo, eliminado));
+        when(usuarioRepository.findAllActivosWithDetails(any(Pageable.class)))
+                .thenReturn(paginaMock);
 
-        List<PerfilResponseDTO> resultado = usuarioService.obtenerTodos();
+        // Act
+        UsuarioPageResponseDTO resultado = usuarioService.obtenerTodos(0, 10);
 
-        assertEquals(1, resultado.size());
-        assertEquals("activo@test.com", resultado.get(0).getEmail());
+        // Assert
+        assertEquals(1, resultado.getTotalUsuarios());
+        assertEquals("activo@test.com", resultado.getUsuarios().get(0).getEmail());
+        assertEquals(0, resultado.getPaginaActual());
+        assertTrue(resultado.isEsUltimaPagina());
+        verify(usuarioRepository).findAllActivosWithDetails(any(Pageable.class));
     }
-
-
 
 
 

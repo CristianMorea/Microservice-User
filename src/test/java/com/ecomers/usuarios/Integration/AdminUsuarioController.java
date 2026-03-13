@@ -25,8 +25,7 @@ class AdminControllerTest extends BaseIntegrationTest {
         mockMvc.perform(get("/admin/listar")
                         .header("Authorization", bearerToken(admin)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(greaterThanOrEqualTo(3))))
-                .andDo(print());
+                .andExpect(jsonPath("$.usuarios.length()").value(3));
     }
 
     @Test
@@ -62,13 +61,13 @@ class AdminControllerTest extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName(" GET /admin/{id} — 400 si usuario no existe")
-    void verUsuario_idInexistente_retorna400() throws Exception {
+    @DisplayName(" GET /admin/{id} — 404 si usuario no existe")
+    void verUsuario_idInexistente_retorna404() throws Exception {
         Usuario admin = crearUsuario("admin@test.com", "Pass123!", rolAdmin);
 
         mockMvc.perform(get("/admin/9999")
                         .header("Authorization", bearerToken(admin)))
-                .andExpect(status().isBadRequest())
+                .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error").value("Usuario no encontrado"));
     }
 
@@ -137,8 +136,8 @@ class AdminControllerTest extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName(" POST /admin/{id}/roles — 400 si el usuario ya tiene ese rol")
-    void asignarRol_rolDuplicado_retorna400() throws Exception {
+    @DisplayName(" POST /admin/{id}/roles — 409 si el usuario ya tiene ese rol")
+    void asignarRol_rolDuplicado_retorna409() throws Exception {
         Usuario admin   = crearUsuario("admin@test.com", "Pass123!", rolAdmin);
         Usuario cliente = crearUsuario("cliente@test.com", "Pass123!", rolCliente);
 
@@ -149,7 +148,7 @@ class AdminControllerTest extends BaseIntegrationTest {
                         .header("Authorization", bearerToken(admin))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(dto)))
-                .andExpect(status().isBadRequest())
+                .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error").value("El usuario ya tiene el rol CLIENTE"));
     }
 
@@ -158,21 +157,25 @@ class AdminControllerTest extends BaseIntegrationTest {
     // ════════════════════════════════════════════════════════
 
     @Test
-    @DisplayName(" DELETE /admin/{id}/roles/{rol} — quita rol correctamente")
+    @DisplayName("DELETE /admin/{id}/roles/{rol} — quita rol correctamente")
     void quitarRol_conDosRoles_retorna204() throws Exception {
+
         crearRolSiNoExiste("VENDEDOR", 2);
-        Usuario admin   = crearUsuario("admin@test.com", "Pass123!", rolAdmin);
+
+        Usuario admin = crearUsuario("admin@test.com", "Pass123!", rolAdmin);
         Usuario cliente = crearUsuario("cliente@test.com", "Pass123!", rolCliente);
 
-        // Primero asignamos VENDEDOR para que tenga dos roles
+        // Asignar segundo rol (VENDEDOR)
         AsignarRolDTO dto = new AsignarRolDTO();
         dto.setRolNombre("VENDEDOR");
-        mockMvc.perform(post("/admin/" + cliente.getUsuarioId() + "/roles")
-                .header("Authorization", bearerToken(admin))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(dto)));
 
-        // Luego quitamos CLIENTE
+        mockMvc.perform(post("/admin/" + cliente.getUsuarioId() + "/roles")
+                        .header("Authorization", bearerToken(admin))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isOk());
+
+        // Quitar rol CLIENTE (debe quedar solo VENDEDOR)
         mockMvc.perform(delete("/admin/" + cliente.getUsuarioId() + "/roles/CLIENTE")
                         .header("Authorization", bearerToken(admin)))
                 .andExpect(status().isNoContent());
