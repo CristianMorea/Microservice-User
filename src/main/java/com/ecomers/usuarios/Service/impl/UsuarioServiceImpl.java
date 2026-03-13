@@ -184,9 +184,6 @@ public class UsuarioServiceImpl implements UsuarioService {
     @Transactional
     public void cambiarPassword(Integer usuarioId, CambiarPasswordDTO dto) {
         log.info("Cambiando password de usuario ID: {}", usuarioId);
-
-        // Solo necesitamos el usuario, no roles ni perfil
-        // findById estándar es suficiente aquí
         Usuario usuario = usuarioRepository.findById(usuarioId)
                 .orElseThrow(() -> new NotFoundException("Usuario no encontrado"));
 
@@ -201,6 +198,13 @@ public class UsuarioServiceImpl implements UsuarioService {
 
         usuario.setPasswordHash(passwordEncoder.encode(dto.getPasswordNueva()));
         usuarioRepository.save(usuario);
+
+        //  Invalida el token actual del usuario en el cache
+        // El próximo request con ese token será rechazado
+        if (dto.getTokenActual() != null) {
+            jwtService.invalidateToken(dto.getTokenActual());
+        }
+
         log.info("Password actualizada para usuario ID: {}", usuarioId);
     }
 
